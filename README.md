@@ -12,7 +12,7 @@ To ensure stability and follow a "Senior DevOps" approach, the project is split 
 
 | Feature | Ubuntu Workflow | Windows Workflow |
 | :--- | :--- | :--- |
-| **Logic File** | `ubuntu-update.yml` | `windows-update.yml` |
+| **Logic File** | `ubuntu-updates.yml` | `windows-updates.yml` |
 | **Trigger** | Manual (`workflow_dispatch`) | Manual (`workflow_dispatch`) |
 | **Package Manager**| `apt-get` | `Chocolatey (choco)` |
 | **Auth Method** | Azure OIDC (Secretless) | Azure OIDC (Secretless) |

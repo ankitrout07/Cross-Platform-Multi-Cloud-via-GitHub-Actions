@@ -1,7 +1,7 @@
 name: Ubuntu-AUM-Patching
 
 on:
-  workflow_dispatch: # This allows the manual "Run workflow" button
+  workflow_dispatch: 
 
 permissions:
   id-token: write
@@ -25,4 +25,4 @@ jobs:
             --name ubuntu \
             --maximum-duration PT4H \
             --reboot-setting IfRequired \
-            --classifications-to-include-linux Security Critical
+            --classifications-to-include-linux Critical Security

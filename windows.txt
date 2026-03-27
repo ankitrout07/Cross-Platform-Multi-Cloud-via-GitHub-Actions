@@ -5,4 +5,4 @@ az vm install-patches \
   --name windows-srv \
   --maximum-duration PT4H \
   --reboot-setting IfRequired \
-  --classifications-to-include-win UpdateRollUp Definition
+  --classifications-to-include-win Critical Security
