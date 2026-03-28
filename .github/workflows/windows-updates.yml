@@ -21,6 +21,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Enable Azure-Managed Patching
+        run: |
+          echo "=== Setting patch orchestration to AutomaticByPlatform ==="
+          az vm update \
+            --resource-group CROSS-PLATFORM-UPDATE \
+            --name Windows \
+            --set osProfile.windowsConfiguration.patchSettings.patchMode=AutomaticByPlatform \
+            --set osProfile.windowsConfiguration.patchSettings.assessmentMode=AutomaticByPlatform \
+            --output none
+          echo "=== Patch orchestration updated ==="
+
       - name: Assess Windows Patches
         run: |
           echo "=== Assessing available patches ==="
