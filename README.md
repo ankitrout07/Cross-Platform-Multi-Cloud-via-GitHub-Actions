@@ -19,12 +19,11 @@ To ensure stability and follow a "Senior DevOps" approach, the project is split 
 | **Execution** | One VM at a time | One VM at a time |
 
 ---
+# Variables
+RG="Cross-Platform-Update"
 
-## 📂 Directory Structure
-```text
-.
-├── .github/
-│   └── workflows/
-│       ├── ubuntu-update.yml    # Manual maintenance for Linux fleet
-│       └── windows-update.yml   # Manual maintenance for Windows fleet
-└── README.md                    # Project documentation
+# 1. Trigger Ubuntu Patching
+az vm install-patches -g $RG -n Ubuntu --reboot-setting IfRequired --classifications-to-include-linux Security Critical
+
+# 2. Trigger Windows Patching
+az vm install-patches -g $RG -n Windows --reboot-setting IfRequired --classifications-to-include-win Security Critical

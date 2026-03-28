@@ -1,8 +1,8 @@
 To run in terminal 
 
 az vm install-patches \
-  --resource-group CROSS-PLATFORM-UPDATER \
-  --name windows-srv \
+  --resource-group CROSS-PLATFORM-UPDATE \
+  --name Windows \
   --maximum-duration PT4H \
   --reboot-setting IfRequired \
   --classifications-to-include-win Critical Security
