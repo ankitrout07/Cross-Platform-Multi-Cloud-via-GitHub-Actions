@@ -21,18 +21,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Enable Azure-Managed Patching
-        run: |
-          echo "=== Setting patch orchestration to AutomaticByPlatform ==="
-          az vm update \
-            --resource-group CROSS-PLATFORM-UPDATE \
-            --name Windows \
-            --set osProfile.windowsConfiguration.patchSettings.patchMode=AutomaticByPlatform \
-            --set osProfile.windowsConfiguration.patchSettings.assessmentMode=AutomaticByPlatform \
-            --output none
-          echo "=== Patch orchestration updated ==="
-
       - name: Assess Windows Patches
+        continue-on-error: true
         run: |
           echo "=== Assessing available patches ==="
           az vm assess-patches \
@@ -49,14 +39,34 @@ jobs:
             --command-id RunPowerShellScript \
             --scripts "if (Get-Command choco -ErrorAction SilentlyContinue) { choco upgrade all -y } else { Write-Warning 'Choco not found. Skipping packages.' }"
 
-      - name: Trigger AUM Windows
+      - name: Install Windows Updates via PowerShell
         run: |
-          echo "=== Installing Windows patches ==="
-          az vm install-patches \
+          echo "=== Installing Windows updates directly via PowerShell ==="
+          az vm run-command invoke \
             --resource-group CROSS-PLATFORM-UPDATE \
             --name Windows \
-            --maximum-duration PT4H \
-            --reboot-setting IfRequired \
-            --classifications-to-include-win "Critical" "Security" "UpdateRollup" "FeaturePack" "ServicePack" "Definition" "Updates" \
+            --command-id RunPowerShellScript \
+            --scripts "
+              # Install PSWindowsUpdate module if not present
+              if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
+                  Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+                  Install-Module -Name PSWindowsUpdate -Force -Confirm:\$false
+              }
+              Import-Module PSWindowsUpdate
+
+              # List available updates
+              Write-Output '=== Available Updates ==='
+              \$updates = Get-WindowsUpdate -Verbose
+              \$updates | Format-Table -AutoSize
+
+              if (\$updates.Count -eq 0) {
+                  Write-Output 'No pending updates found.'
+              } else {
+                  Write-Output \"Found \$(\$updates.Count) update(s). Installing...\"
+                  # Install all available updates, auto-accept, allow reboot if needed
+                  Install-WindowsUpdate -AcceptAll -AutoReboot -Verbose | Format-Table -AutoSize
+                  Write-Output '=== Update installation complete ==='
+              }
+            " \
             --output json
-          echo "=== Patch installation complete ==="
+          echo "=== Done ==="
