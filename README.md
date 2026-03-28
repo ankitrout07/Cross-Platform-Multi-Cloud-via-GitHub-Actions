@@ -27,3 +27,6 @@ az vm install-patches -g $RG -n Ubuntu --reboot-setting IfRequired --classificat
 
 # 2. Trigger Windows Patching
 az vm install-patches -g $RG -n Windows --reboot-setting IfRequired --classifications-to-include-win Security Critical
+
+az vm assessment-updates
+az vm install-patches
