@@ -21,7 +21,7 @@ jobs:
       - name: Trigger AUM Windows
         run: |
           az vm install-patches \
-            --resource-group CROSS-PLATFORM-UPDATER \
+            --resource-group Cross-Platform-Update \
             --name windows-srv \
             --maximum-duration PT4H \
             --reboot-setting IfRequired \

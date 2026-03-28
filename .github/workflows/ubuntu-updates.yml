@@ -21,7 +21,7 @@ jobs:
       - name: Trigger AUM Linux
         run: |
           az vm install-patches \
-            --resource-group CROSS-PLATFORM-UPDATER \
+            --resource-group Cross-Platform-Update \
             --name ubuntu \
             --maximum-duration PT4H \
             --reboot-setting IfRequired \
