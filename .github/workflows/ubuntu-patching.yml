@@ -1,5 +1,15 @@
 name: Ubuntu-MultiCloud-Patching
 
+env:
+  # AWS Configuration
+  AWS_REGION: "ap-south-1"
+  AWS_TAG_KEY: "OS"
+  AWS_TAG_VALUE: "Ubuntu"
+  # Azure Configuration
+  AZ_RESOURCE_GROUP: "Cross-Platform-Update"
+  AZ_VM_NAME: "Ubuntu"
+
+
 on:
   push:
     branches:
@@ -29,27 +39,57 @@ jobs:
 
       - name: Azure Patching (Run Script)
         run: |
-          echo "Executing script on Azure Ubuntu VM..."
-          az vm run-command invoke -g Cross-Platform-Update -n Ubuntu \
+          echo "Executing script on Azure Ubuntu VM: $AZ_VM_NAME in Group: $AZ_RESOURCE_GROUP..."
+          az vm run-command invoke -g "$AZ_RESOURCE_GROUP" -n "$AZ_VM_NAME" \
             --command-id RunShellScript \
             --scripts @scripts/ubuntu/patch.sh
+
 
       # --- AWS SECTION ---
       - name: AWS Login
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: AWS Patching (SSM Run Script)
+
+      - name: AWS Patching (SSM Run Script with Watcher)
         run: |
-          echo "Executing script on AWS Ubuntu Fleet (Tag: OS=Ubuntu)..."
+          echo "Executing script on AWS Ubuntu Fleet (Tag: $AWS_TAG_KEY=$AWS_TAG_VALUE)..."
           SCRIPT_CONTENT=$(cat scripts/ubuntu/patch.sh)
           # Use jq to safely format the script for SSM
           COMMANDS_JSON=$(jq -n --arg cmd "$SCRIPT_CONTENT" '[$cmd]')
           
-          aws ssm send-command \
+          RESPONSE=$(aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets "Key=tag:OS,Values=Ubuntu" \
+            --targets "Key=tag:$AWS_TAG_KEY,Values=$AWS_TAG_VALUE" \
             --parameters "{\"commands\":$COMMANDS_JSON}" \
-            --comment "Universal Scripted Patching for Ubuntu"
+            --comment "Universal Scripted Patching for Ubuntu" \
+            --output json)
+
+          COMMAND_ID=$(echo $RESPONSE | jq -r '.Command.CommandId')
+          REQUESTED_COUNT=$(echo $RESPONSE | jq -r '.Command.RequestedCount')
+          echo "Command sent with ID: $COMMAND_ID (Requested for $REQUESTED_COUNT targets)"
+
+          if [ "$REQUESTED_COUNT" -eq 0 ]; then
+            echo "Error: No targets matched the tag $AWS_TAG_KEY=$AWS_TAG_VALUE! (RequestedCount=0)"
+            exit 1
+          fi
+
+          # Polling for status
+          echo "Waiting for command execution to complete..."
+          while true; do
+            STATUS=$(aws ssm list-commands --command-id "$COMMAND_ID" --query "Commands[0].Status" --output text)
+            echo "Current Status: $STATUS"
+            
+            if [[ "$STATUS" == "Success" ]]; then
+              echo "Command completed successfully!"
+              exit 0
+            elif [[ "$STATUS" == "Failed" || "$STATUS" == "TimedOut" || "$STATUS" == "Cancelled" ]]; then
+              echo "Command execution failed with status: $STATUS"
+              exit 1
+            fi
+            
+            sleep 15
+          done
+
