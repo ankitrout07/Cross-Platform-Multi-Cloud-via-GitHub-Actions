@@ -32,14 +32,15 @@ Use the "Big Green Button" for zero-day vulnerabilities:
 3. Click the **Run workflow** dropdown and select `Run workflow`.
 
 ### Option C: Targeted Cloud Selection (Selector Tool)
-If you only need to patch one cloud provider (Azure or AWS) at a time:
+The **Matrix-style Selector** allows you to patch specific environments or the entire global fleet in a single run:
 1. Navigate to your GitHub repository's **Actions** tab.
 2. Select **🎯 Single-Cloud Patching Selector** in the left sidebar.
 3. Click the **Run workflow** dropdown on the right.
-4. **The Selector**:
-   - Choose your **Cloud Provider** (AWS or Azure).
-   - *Note: This will automatically patch both Ubuntu and Windows for that cloud.*
+4. **The Matrix Selector**:
+   - **Cloud Provider**: Choose `AWS`, `Azure`, or `BOTH`.
+   - **OS Type**: Choose `Ubuntu`, `Windows`, or `BOTH`.
 5. Click the green **Run workflow** button.
+   - *Example: Selecting `BOTH` for both will patch all 4 target environments in parallel.*
 
 ---
 

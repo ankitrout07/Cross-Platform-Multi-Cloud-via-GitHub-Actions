@@ -1,53 +1,55 @@
-# 🏗️ The Universal Architecture: Script-Based Multi-Cloud Patching
+# 🏗️ Universal Multi-Cloud Patching Command Center
 
-This repository is the **Single Source of Truth** for the patching state of your global fleet (Azure + AWS). 
+This project implements a professional, high-uptime automation suite for cross-platform system maintenance. Using **GitHub Actions**, **Azure OIDC**, and **AWS OIDC (Mumbai)**, it provide a centralized "Remote Control" for patching your global fleet of Ubuntu and Windows instances.
 
-## 🚀 Unified Strategy
-Instead of hardcoding logic in YAML, we use specialized scripts that are executed across both cloud providers. This ensures version control and auditability of your patching logic.
+## 🌟 The "Matrix-style" Selector
+The project's centerpiece is a **Single-Cloud Patching Selector** that allows you to target specific environments or your entire global fleet in a single run.
 
-### 1. The Trigger Mechanism
-- **Push (Automatic)**: Updating any script in `scripts/ubuntu/` or `scripts/windows/` and pushing to `main` immediately triggers the corresponding OS-specific workflow.
-- **Workflow Dispatch (Manual)**: The "Big Green Button." Manually trigger a patch run for zero-day vulnerabilities or on-demand maintenance.
-
-### 2. OS-Specific Workflows
-| Workflow | Target OS | Logic Source | Tools Used |
-| :--- | :--- | :--- | :--- |
-| **Ubuntu-MultiCloud-Patching** | Ubuntu 24.04+ | `scripts/ubuntu/patch.sh` | `apt`, `az run-command`, `aws ssm` |
-| **Windows-MultiCloud-Patching** | Windows Server | `scripts/windows/patch.ps1` | `PSWindowsUpdate`, `Chocolatey`, `KBs` |
+| Feature | Target | Selection Logic |
+| :--- | :--- | :--- |
+| **Cloud Provider** | AWS, Azure, BOTH | Dynamic OIDC Login & CLI Targeting |
+| **OS Type** | Ubuntu, Windows, BOTH | OS-Specific Scripts & Documentation |
 
 ---
 
 ## 📂 Repository Structure
+The repository is the **Single Source of Truth** for your patching state:
 ```text
 .github/workflows/
-  ├── ubuntu-patching.yml    # Targets Azure + AWS Ubuntu
-  └── windows-patching.yml   # Targets Azure + AWS Windows
+  ├── patching-selector.yml  # Matrix Selector (Dropdown Tool)
+  ├── ubuntu-patching.yml    # Automatic & Specialized Ubuntu Patching
+  └── windows-patching.yml   # Automatic & Specialized Windows Patching
+
 scripts/
   ├── ubuntu/
-  │   └── patch.sh           # Core logic for Linux patching
+  │   └── patch.sh           # Core logic for Linux (apt, kernel headers)
   └── windows/
-      └── patch.ps1          # Core logic for Windows patching
+      └── patch.ps1          # Core logic for Windows (PSUpdate, Choco)
 ```
 
 ---
 
-## 🛠️ Configuration Checklist (AWS)
-To ensure AWS instances respond to these workflows:
-1. **Tagging**: Tag your instances with `OS=Ubuntu` or `OS=Windows`.
-2. **OIDC**: Ensure the GitHub Actions IAM Role has `AmazonSSMFullAccess`.
-3. **SSM Agent**: Verify the agent is "Online" via the AWS Console or CLI.
+## 🛠️ Getting Started
+For detailed steps on setting up OIDC, tagging your infrastructure, and triggering your first run, please refer to the:
+
+👉 **[HOW_TO_RUN.md](./HOW_TO_RUN.md)**
 
 ---
 
-## ✅ Fleet Status Validation
-Check the real-time status of your patching deployment:
+## ✅ Fleet Status Reporting
+Run these validation commands from your terminal to monitor your global patching status after a workflow completes:
 
-### Azure Status
+### Azure Infrastructure (Status)
 ```bash
 az vm get-instance-view -g Cross-Platform-Update -n Ubuntu --query "instanceView.patchStatus"
 ```
 
-### AWS Status
+### AWS Infrastructure (Status)
 ```bash
 aws ssm list-command-invocations --details --query "CommandInvocations[*].{Instance:InstanceId,Status:Status}"
 ```
+
+---
+
+## 🔒 Security Policy
+This project strictly follows a **Secretless Architecture** using OpenID Connect (OIDC). No long-lived access keys or credentials are stored within the repository.

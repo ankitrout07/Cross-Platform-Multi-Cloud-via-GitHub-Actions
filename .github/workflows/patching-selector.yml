@@ -6,11 +6,21 @@ on:
       target_env:
         description: 'Select Cloud Provider'
         required: true
-        default: 'AWS'
+        default: 'BOTH'
         type: choice
         options:
           - AWS
           - Azure
+          - BOTH
+      os_type:
+        description: 'Select OS Type'
+        required: true
+        default: 'BOTH'
+        type: choice
+        options:
+          - Ubuntu
+          - Windows
+          - BOTH
 
 permissions:
   id-token: write
@@ -20,7 +30,8 @@ jobs:
   # --- AWS EXECUTION BLOCK ---
   patch-aws:
     name: "AWS Execution"
-    if: "${{ github.event.inputs.target_env == 'AWS' }}"
+    # Execute if target_env is AWS or BOTH
+    if: "${{ github.event.inputs.target_env == 'AWS' || github.event.inputs.target_env == 'BOTH' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -33,6 +44,8 @@ jobs:
           aws-region: ap-south-1
 
       - name: Patch AWS Ubuntu
+        # Execute if os_type is Ubuntu or BOTH
+        if: "${{ github.event.inputs.os_type == 'Ubuntu' || github.event.inputs.os_type == 'BOTH' }}"
         run: |
           echo "Patching AWS Ubuntu nodes (OS=Ubuntu)..."
           SCRIPT_CONTENT=$(cat scripts/ubuntu/patch.sh)
@@ -45,6 +58,8 @@ jobs:
             --comment "Selector Triggered Patching for Ubuntu"
 
       - name: Patch AWS Windows
+        # Execute if os_type is Windows or BOTH
+        if: "${{ github.event.inputs.os_type == 'Windows' || github.event.inputs.os_type == 'BOTH' }}"
         run: |
           echo "Patching AWS Windows nodes (OS=Windows)..."
           SCRIPT_CONTENT=$(cat scripts/windows/patch.ps1)
@@ -59,7 +74,8 @@ jobs:
   # --- AZURE EXECUTION BLOCK ---
   patch-azure:
     name: "Azure Execution"
-    if: "${{ github.event.inputs.target_env == 'Azure' }}"
+    # Execute if target_env is Azure or BOTH
+    if: "${{ github.event.inputs.target_env == 'Azure' || github.event.inputs.target_env == 'BOTH' }}"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -73,6 +89,8 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Patch Azure Ubuntu
+        # Execute if os_type is Ubuntu or BOTH
+        if: "${{ github.event.inputs.os_type == 'Ubuntu' || github.event.inputs.os_type == 'BOTH' }}"
         run: |
           echo "Patching Azure Ubuntu VM..."
           az vm run-command invoke -g Cross-Platform-Update -n Ubuntu \
@@ -80,6 +98,8 @@ jobs:
             --scripts @scripts/ubuntu/patch.sh
 
       - name: Patch Azure Windows
+        # Execute if os_type is Windows or BOTH
+        if: "${{ github.event.inputs.os_type == 'Windows' || github.event.inputs.os_type == 'BOTH' }}"
         run: |
           echo "Patching Azure Windows VM..."
           az vm run-command invoke -g Cross-Platform-Update -n Windows \
