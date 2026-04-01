@@ -31,6 +31,14 @@ Use the "Big Green Button" for zero-day vulnerabilities:
 2. Select either `Ubuntu-MultiCloud-Patching` or `Windows-MultiCloud-Patching`.
 3. Click the **Run workflow** dropdown and select `Run workflow`.
 
+### Option C: Targeted Cloud Selection (Selector Tool)
+If you only need to patch one cloud provider (Azure or AWS) regardless of the OS:
+1. Navigate to your GitHub repository's **Actions** tab.
+2. Select **🎯 Single-Cloud Patching Selector** in the left sidebar.
+3. Click the **Run workflow** dropdown on the right.
+4. **The Selector**: You will see a dropdown menu. Select either **AWS** or **Azure**.
+5. Click the green **Run workflow** button.
+
 ---
 
 ## 📊 3. Monitoring & Verification
