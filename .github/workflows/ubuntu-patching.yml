@@ -1,0 +1,55 @@
+name: Ubuntu-MultiCloud-Patching
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/ubuntu/**'
+  workflow_dispatch: # Manual trigger
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  patch-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      # --- AZURE SECTION ---
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Azure Patching (Run Script)
+        run: |
+          echo "Executing script on Azure Ubuntu VM..."
+          az vm run-command invoke -g Cross-Platform-Update -n Ubuntu \
+            --command-id RunShellScript \
+            --scripts @scripts/ubuntu/patch.sh
+
+      # --- AWS SECTION ---
+      - name: AWS Login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: AWS Patching (SSM Run Script)
+        run: |
+          echo "Executing script on AWS Ubuntu Fleet (Tag: OS=Ubuntu)..."
+          SCRIPT_CONTENT=$(cat scripts/ubuntu/patch.sh)
+          # Use jq to safely format the script for SSM
+          COMMANDS_JSON=$(jq -n --arg cmd "$SCRIPT_CONTENT" '[$cmd]')
+          
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:OS,Values=Ubuntu" \
+            --parameters "{\"commands\":$COMMANDS_JSON}" \
+            --comment "Universal Scripted Patching for Ubuntu"

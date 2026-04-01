@@ -1,0 +1,55 @@
+name: Windows-MultiCloud-Patching
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/windows/**'
+  workflow_dispatch: # Manual trigger
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  patch-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      # --- AZURE SECTION ---
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Azure Patching (Run PS Script)
+        run: |
+          echo "Executing script on Azure Windows VM..."
+          az vm run-command invoke -g Cross-Platform-Update -n Windows \
+            --command-id RunPowerShellScript \
+            --scripts @scripts/windows/patch.ps1
+
+      # --- AWS SECTION ---
+      - name: AWS Login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: AWS Patching (SSM Run Script)
+        run: |
+          echo "Executing script on AWS Windows Fleet (Tag: OS=Windows)..."
+          SCRIPT_CONTENT=$(cat scripts/windows/patch.ps1)
+          # Use jq to safely format the script for SSM
+          COMMANDS_JSON=$(jq -n --arg cmd "$SCRIPT_CONTENT" '[$cmd]')
+          
+          aws ssm send-command \
+            --document-name "AWS-RunPowerShellScript" \
+            --targets "Key=tag:OS,Values=Windows" \
+            --parameters "{\"commands\":$COMMANDS_JSON}" \
+            --comment "Universal Scripted Patching for Windows"

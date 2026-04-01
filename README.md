@@ -1,56 +1,53 @@
-# 🏗️ The Universal Architecture: Cross-Platform Multi-Cloud Patching
+# 🏗️ The Universal Architecture: Script-Based Multi-Cloud Patching
 
-This project implements a professional, high-uptime automation suite using **GitHub Actions**, **Azure OIDC**, and **AWS OIDC**. It provides a centralized "Remote Control" for system maintenance on both Azure and AWS instances.
+This repository is the **Single Source of Truth** for the patching state of your global fleet (Azure + AWS). 
 
-## 🚀 The Unified Workflow: `universal-patching.yml`
-This workflow combines high-logic PowerShell and Bash scripts for Azure with native AWS SSM commands. It assumes two identities (one in Azure and one in AWS) using OpenID Connect (OIDC) to eliminate the need for long-lived credentials.
+## 🚀 Unified Strategy
+Instead of hardcoding logic in YAML, we use specialized scripts that are executed across both cloud providers. This ensures version control and auditability of your patching logic.
 
-| Job | Platform | Target OS | Logic |
+### 1. The Trigger Mechanism
+- **Push (Automatic)**: Updating any script in `scripts/ubuntu/` or `scripts/windows/` and pushing to `main` immediately triggers the corresponding OS-specific workflow.
+- **Workflow Dispatch (Manual)**: The "Big Green Button." Manually trigger a patch run for zero-day vulnerabilities or on-demand maintenance.
+
+### 2. OS-Specific Workflows
+| Workflow | Target OS | Logic Source | Tools Used |
 | :--- | :--- | :--- | :--- |
-| **patch-azure** | Azure | Ubuntu & Windows | `az vm install-patches` + Custom PS |
-| **patch-aws** | AWS | EC2 Fleet | `aws ssm send-command` (SSM Agent) |
+| **Ubuntu-MultiCloud-Patching** | Ubuntu 24.04+ | `scripts/ubuntu/patch.sh` | `apt`, `az run-command`, `aws ssm` |
+| **Windows-MultiCloud-Patching** | Windows Server | `scripts/windows/patch.ps1` | `PSWindowsUpdate`, `Chocolatey`, `KBs` |
+
+---
+
+## 📂 Repository Structure
+```text
+.github/workflows/
+  ├── ubuntu-patching.yml    # Targets Azure + AWS Ubuntu
+  └── windows-patching.yml   # Targets Azure + AWS Windows
+scripts/
+  ├── ubuntu/
+  │   └── patch.sh           # Core logic for Linux patching
+  └── windows/
+      └── patch.ps1          # Core logic for Windows patching
+```
 
 ---
 
 ## 🛠️ Configuration Checklist (AWS)
-To ensure AWS "listens" to this script, perform these three steps:
-
-### 1. Tag your EC2 Instances
-AWS SSM uses tags to identify targets. Run this to tag your AWS VMs:
-```bash
-# Replace with your actual EC2 Instance IDs
-aws ec2 create-tags --resources i-0xxxxxxxxxxxx i-0yyyyyyyyyyyy --tags Key=PatchGroup,Value=Production
-```
-
-### 2. Verify SSM Agent
-Ensure the SSM Agent is "Online" on your instances:
-```bash
-aws ssm describe-instance-information --query "InstanceInformationList[*].{ID:InstanceId,Status:PingStatus,OS:PlatformName}" --output table
-```
-
-### 3. Establish AWS OIDC Trust
-Add the AWS IAM Identity Provider for GitHub:
-- **Provider URL**: `https://token.actions.githubusercontent.com`
-- **Audience**: `sts.amazonaws.com`
-- **Role Policy**: Ensure the role has `AmazonSSMFullAccess`.
+To ensure AWS instances respond to these workflows:
+1. **Tagging**: Tag your instances with `OS=Ubuntu` or `OS=Windows`.
+2. **OIDC**: Ensure the GitHub Actions IAM Role has `AmazonSSMFullAccess`.
+3. **SSM Agent**: Verify the agent is "Online" via the AWS Console or CLI.
 
 ---
 
-## ✅ Validation
-Once the workflow finishes, check the status of your global fleet:
+## ✅ Fleet Status Validation
+Check the real-time status of your patching deployment:
 
 ### Azure Status
 ```bash
-az vm get-instance-view -g Cross-Platform-Update -n Windows --query "instanceView.patchStatus"
+az vm get-instance-view -g Cross-Platform-Update -n Ubuntu --query "instanceView.patchStatus"
 ```
 
 ### AWS Status
 ```bash
 aws ssm list-command-invocations --details --query "CommandInvocations[*].{Instance:InstanceId,Status:Status}"
 ```
-
----
-
-## 📂 Legacy Workflows
-- `ubuntu-updates.yml`: Azure-only Ubuntu patching.
-- `windows-updates.yml`: Azure-only Windows patching.
