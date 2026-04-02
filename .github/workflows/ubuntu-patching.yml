@@ -7,7 +7,6 @@ env:
   AWS_TAG_VALUE: "Ubuntu"
   # Azure Configuration
   AZ_RESOURCE_GROUP: "Cross-Platform-Update"
-  AZ_VM_NAME: "Ubuntu"
 
 
 on:
@@ -37,12 +36,30 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Azure Patching (Run Script)
+      - name: Azure Discovery & Patching (List then Execute)
         run: |
-          echo "Executing script on Azure Ubuntu VM: $AZ_VM_NAME in Group: $AZ_RESOURCE_GROUP..."
-          az vm run-command invoke -g "$AZ_RESOURCE_GROUP" -n "$AZ_VM_NAME" \
-            --command-id RunShellScript \
-            --scripts @scripts/ubuntu/patch.sh
+          echo "Phase 1: Discovery - Finding all Ubuntu VMs with Tag: $AWS_TAG_KEY=$AWS_TAG_VALUE"
+          # Fetch VMs matching the tag across the subscription
+          VM_LIST=$(az vm list --query "[?tags.$AWS_TAG_KEY=='$AWS_TAG_VALUE'].{name:name, rg:resourceGroup}" -o json)
+          
+          VM_COUNT=$(echo "$VM_LIST" | jq '. | length')
+          echo "Found $VM_COUNT matching VMs."
+
+          if [ "$VM_COUNT" -eq 0 ]; then
+            echo "Error: No Azure VMs matched the tag $AWS_TAG_KEY=$AWS_TAG_VALUE!"
+            exit 1
+          fi
+
+          echo "Phase 2: Execution - Running Shell Script on discovered fleet"
+          echo "$VM_LIST" | jq -c '.[]' | while read -r vm; do
+            NAME=$(echo "$vm" | jq -r '.name')
+            RG=$(echo "$vm" | jq -r '.rg')
+            echo "--------------------------------------------------------"
+            echo "Targeting VM: $NAME in Resource Group: $RG..."
+            az vm run-command invoke -g "$RG" -n "$NAME" \
+              --command-id RunShellScript \
+              --scripts @scripts/ubuntu/patch.sh
+          done
 
 
       # --- AWS SECTION ---

@@ -7,9 +7,6 @@ env:
   AWS_TAG_VALUE_UBUNTU: "Ubuntu"
   AWS_TAG_VALUE_WINDOWS: "Windows"
   # Azure Configuration
-  AZ_RESOURCE_GROUP: "CROSS-PLATFORM"
-  AZ_VM_UBUNTU: "Ubuntu"
-  AZ_VM_WINDOWS: "Windows"
 
 
 on:
@@ -157,22 +154,46 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Patch Azure Ubuntu
+      - name: Patch Azure Ubuntu (Discovery & Execution)
         # Execute if os_type is Ubuntu or BOTH
         if: "${{ github.event.inputs.os_type == 'Ubuntu' || github.event.inputs.os_type == 'BOTH' }}"
         run: |
-          echo "Patching Azure Ubuntu VM: $AZ_VM_UBUNTU in Group: $AZ_RESOURCE_GROUP..."
-          az vm run-command invoke -g "$AZ_RESOURCE_GROUP" -n "$AZ_VM_UBUNTU" \
-            --command-id RunShellScript \
-            --scripts @scripts/ubuntu/patch.sh
+          echo "Phase 1: Discovery - Finding Azure Ubuntu VMs (Tag: $AWS_TAG_KEY=$AWS_TAG_VALUE_UBUNTU)"
+          VM_LIST=$(az vm list --query "[?tags.$AWS_TAG_KEY=='$AWS_TAG_VALUE_UBUNTU'].{name:name, rg:resourceGroup}" -o json)
+          VM_COUNT=$(echo "$VM_LIST" | jq '. | length')
+          echo "Found $VM_COUNT matching VMs."
+
+          if [ "$VM_COUNT" -gt 0 ]; then
+            echo "Phase 2: Execution - Patching discovered fleet"
+            echo "$VM_LIST" | jq -c '.[]' | while read -r vm; do
+              NAME=$(echo "$vm" | jq -r '.name')
+              RG=$(echo "$vm" | jq -r '.rg')
+              echo "Targeting VM: $NAME in $RG..."
+              az vm run-command invoke -g "$RG" -n "$NAME" --command-id RunShellScript --scripts @scripts/ubuntu/patch.sh
+            done
+          else
+            echo "No Ubuntu VMs found for patching."
+          fi
 
 
-      - name: Patch Azure Windows
+      - name: Patch Azure Windows (Discovery & Execution)
         # Execute if os_type is Windows or BOTH
         if: "${{ github.event.inputs.os_type == 'Windows' || github.event.inputs.os_type == 'BOTH' }}"
         run: |
-          echo "Patching Azure Windows VM: $AZ_VM_WINDOWS in Group: $AZ_RESOURCE_GROUP..."
-          az vm run-command invoke -g "$AZ_RESOURCE_GROUP" -n "$AZ_VM_WINDOWS" \
-            --command-id RunPowerShellScript \
-            --scripts @scripts/windows/patch.ps1
+          echo "Phase 1: Discovery - Finding Azure Windows VMs (Tag: $AWS_TAG_KEY=$AWS_TAG_VALUE_WINDOWS)"
+          VM_LIST=$(az vm list --query "[?tags.$AWS_TAG_KEY=='$AWS_TAG_VALUE_WINDOWS'].{name:name, rg:resourceGroup}" -o json)
+          VM_COUNT=$(echo "$VM_LIST" | jq '. | length')
+          echo "Found $VM_COUNT matching VMs."
+
+          if [ "$VM_COUNT" -gt 0 ]; then
+            echo "Phase 2: Execution - Patching discovered fleet"
+            echo "$VM_LIST" | jq -c '.[]' | while read -r vm; do
+              NAME=$(echo "$vm" | jq -r '.name')
+              RG=$(echo "$vm" | jq -r '.rg')
+              echo "Targeting VM: $NAME in $RG..."
+              az vm run-command invoke -g "$RG" -n "$NAME" --command-id RunPowerShellScript --scripts @scripts/windows/patch.ps1
+            done
+          else
+            echo "No Windows VMs found for patching."
+          fi
 
